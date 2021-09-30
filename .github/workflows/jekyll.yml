@@ -20,15 +20,10 @@ jobs:
       uses: actions/checkout@v2
       with:
         submodules: recursive
-    - name: setup ruby
+    - name: setup ruby and build
       uses: ruby/setup-ruby@v1
       with:
         ruby-version: 2.7
-    - name: install dependencies
-      run: gem install bundler jekyll
-    - name: build
-      run: |
-        # from https://nokogiri.org/tutorials/installing_nokogiri.html#how-can-i-avoid-using-a-precompiled-native-gem
-        bundle config set force_ruby_platform true
-        
-        bundle install
+        bundler: 'Gemfile.lock'
+        bundler-cache: true # this will run bundle install
+
