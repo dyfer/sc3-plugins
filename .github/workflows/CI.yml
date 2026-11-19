@@ -39,19 +39,16 @@ jobs:
           - name: Linux-x64-22.04
             os: ubuntu-22.04
             cmake-flags: '-G "Unix Makefiles"'
-            cache-path: '~/.cache/ccache'
 
           - name: Linux-x64-24.04
             os: ubuntu-24.04
             cmake-flags: '-G "Unix Makefiles"'
-            cache-path: '~/.cache/ccache'
             
           - name: macOS
             os: macos-15
             cmake-flags: '-G Xcode -D CMAKE_OSX_ARCHITECTURES="x86_64;arm64"'
             xcode-version: '16.4'
             deployment-target: '10.15'
-            cache-path: '~/Library/Caches/ccache'
             
           - name: Windows-32bit
             os: windows-2022
@@ -59,7 +56,6 @@ jobs:
             vcvars-script: 'C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars32.bat'
             fftw-url: 'ftp://ftp.fftw.org/pub/fftw/fftw-3.3.5-dll32.zip'
             fftw-arch: 'X86'
-            cache-path: '~/AppData/Local/ccache'
             
           - name: Windows-64bit
             os: windows-2022
@@ -67,7 +63,6 @@ jobs:
             vcvars-script: 'C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat'
             fftw-url: 'ftp://ftp.fftw.org/pub/fftw/fftw-3.3.5-dll64.zip'
             fftw-arch: 'X64'
-            cache-path: '~/AppData/Local/ccache'
 
     env:
       SC_SRC_PATH: ${{ github.workspace }}/supercollider
@@ -76,6 +71,11 @@ jobs:
       FFTW_INSTALL_DIR: "C:/Program Files/fftw"
       DEVELOPER_DIR: '/Applications/Xcode_${{ matrix.xcode-version }}.app/Contents/Developer'
       MACOSX_DEPLOYMENT_TARGET: '${{ matrix.deployment-target }}'
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_SLOPPINESS: time_macros,pch_defines,include_file_mtime
 
     name: ${{ matrix.name }}
     steps:
@@ -102,9 +102,8 @@ jobs:
         ref: main
     - name: cache ccache
       uses: actions/cache@v6
-      if: matrix.cache-path
       with:
-        path: ${{ matrix.cache-path }}
+        path: ${{ env.CCACHE_DIR }}
         key: ${{ matrix.name }}-${{ github.run_id }}
         restore-keys: ${{ matrix.name }}-
     - name: install Linux dependencies
@@ -133,12 +132,9 @@ jobs:
       run: |
         call "${{ matrix.vcvars-script }}"
         lib.exe /machine:${{ matrix.fftw-arch }} /def:libfftw3f-3.def
-    - name: set up ccache
+    - name: clear ccache stats
       shell: bash
-      run: |
-        ccache --set-config=base_dir="${{ github.workspace }}"
-        ccache --set-config=sloppiness=file_macro,time_macros,include_file_ctime,include_file_mtime
-        ccache -z # clear stats
+      run: ccache -z
     - name: configure
       shell: bash
       run: |
