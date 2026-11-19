@@ -133,6 +133,12 @@ jobs:
       run: |
         call "${{ matrix.vcvars-script }}"
         lib.exe /machine:${{ matrix.fftw-arch }} /def:libfftw3f-3.def
+    - name: set up ccache
+      shell: bash
+      run: |
+        ccache --set-config=base_dir="${{ github.workspace }}"
+        ccache --set-config=sloppiness=file_macro,time_macros,include_file_ctime,include_file_mtime
+        ccache -z # clear stats
     - name: configure
       shell: bash
       run: |
@@ -145,6 +151,9 @@ jobs:
         CMAKE_BUILD_PARALLEL_LEVEL: 4
       run: |
         cmake --build . --config Release --target install
+    - name: print ccache stats
+      shell: bash
+      run: ccache -s
     - name: compress plugins
       shell: bash
       working-directory: ${{ env.INSTALL_PATH }}
