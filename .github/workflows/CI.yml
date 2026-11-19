@@ -41,10 +41,11 @@ jobs:
             cmake-flags: '-G "Unix Makefiles"'
             cache-path: '~/.cache/ccache'
 
-          - name: Linux-x64-24.04
+          - name: Linux-x64-24.04-system-headers
             os: ubuntu-24.04
             cmake-flags: '-G "Unix Makefiles"'
             cache-path: '~/.cache/ccache'
+            system-headers: true
             
           - name: macOS
             os: macos-15
@@ -96,6 +97,7 @@ jobs:
         submodules: recursive
     - name: checkout supercollider
       uses: actions/checkout@v7
+      if: ${{ !matrix.system-headers }}
       with:
         repository: supercollider/supercollider
         path: ${{ env.SC_SRC_PATH }}
@@ -109,7 +111,12 @@ jobs:
         restore-keys: ${{ matrix.name }}-
     - name: install Linux dependencies
       if: runner.os == 'Linux'
-      run: sudo apt-get install --yes libfftw3-dev ccache
+      run: |
+        sudo apt-get install --yes libfftw3-dev ccache
+        if [[ "${{ matrix.system-headers }}" == "true" ]]; then
+          sudo apt-get update --fix-missing
+          sudo apt-get install --yes supercollider-dev
+        fi
     - name: install macOS dependencies
       if: runner.os == 'macOS'
       run: brew install ccache
@@ -137,7 +144,11 @@ jobs:
       shell: bash
       run: |
         mkdir $BUILD_PATH && cd $BUILD_PATH
-        cmake ${{ matrix.cmake-flags }} -D SC_PATH=$SC_SRC_PATH -D CMAKE_BUILD_TYPE=Release -D SUPERNOVA=ON -D CMAKE_INSTALL_PREFIX=$INSTALL_PATH -D IN_PLACE_BUILD=OFF ..
+        ADDITIONAL_CMAKE_FLAGS=""
+        if [[ "${{ matrix.system-headers }}" != "true" ]]; then
+          ADDITIONAL_CMAKE_FLAGS="-D SC_PATH=$SC_SRC_PATH $ADDITIONAL_CMAKE_FLAGS"
+        fi
+        cmake ${{ matrix.cmake-flags }} $ADDITIONAL_CMAKE_FLAGS -D CMAKE_BUILD_TYPE=Release -D SUPERNOVA=ON -D CMAKE_INSTALL_PREFIX=$INSTALL_PATH -D IN_PLACE_BUILD=OFF ..
     - name: build
       shell: bash
       working-directory: ${{ env.BUILD_PATH }}
